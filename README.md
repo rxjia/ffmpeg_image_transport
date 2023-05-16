@@ -157,3 +157,13 @@ you need a newer version of ffmpeg:
 If the build still fails, make sure you start from scratch:
 
     catkin clean ffmpeg_image_transport
+
+## gpu limit
+can not run much ffmpeg publisher
+```
+[h264_nvenc @ 0x7fe9d4879340] OpenEncodeSessionEx failed: out of memory (10)
+[h264_nvenc @ 0x7fe9d4879340] No NVENC capable devices found
+```
+### Reference
+https://developer.nvidia.com/video-encode-and-decode-gpu-support-matrix-new#Encoder
+https://github.com/keylase/nvidia-patch

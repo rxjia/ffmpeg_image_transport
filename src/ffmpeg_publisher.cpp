@@ -108,5 +108,8 @@ namespace ffmpeg_image_transport {
     const ros::SingleSubscriberPublisher &pub) {
     ROS_DEBUG_STREAM("FFMPEGPublisher: disconnect() subscribers left: "
                      << getNumSubscribers());
+    if (getNumSubscribers() == 0 && this->encoder_.isInitialized()){
+        this->encoder_.reset();
+    }
   }
 }
