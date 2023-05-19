@@ -28,27 +28,24 @@ FFMPEGDecoder::~FFMPEGDecoder()
 
 void FFMPEGDecoder::reset()
 {
-  if (codecContext_)
-  {
-    avcodec_close(codecContext_);
-    av_free(codecContext_);
-    codecContext_ = NULL;
-  }
+  if (colorFrame_)
+    av_frame_free(&colorFrame_);
+  if (decodedFrame_)
+    av_frame_free(&decodedFrame_);
+  if (cpuFrame_)
+    av_frame_free(&cpuFrame_);
+
   if (swsContext_)
   {
     sws_freeContext(swsContext_);
     swsContext_ = NULL;
   }
+
+  if (codecContext_)
+    avcodec_free_context(&codecContext_);
+
   if (hwDeviceContext_)
-  {
     av_buffer_unref(&hwDeviceContext_);
-  }
-  av_free(decodedFrame_);
-  decodedFrame_ = NULL;
-  av_free(cpuFrame_);
-  cpuFrame_ = NULL;
-  av_free(colorFrame_);
-  colorFrame_ = NULL;
 }
 
 bool FFMPEGDecoder::initialize(const FFMPEGPacket::ConstPtr& msg, Callback callback, const std::string& codecName)
@@ -76,6 +73,14 @@ bool FFMPEGDecoder::initialize(const FFMPEGPacket::ConstPtr& msg, Callback callb
   return (initDecoder(msg->img_width, msg->img_height, cname, codecs));
 }
 
+bool FFMPEGDecoder::needReset(const FFMPEGPacket::ConstPtr& msg) const
+{
+  if (this->width == msg->img_width && this->height == msg->img_height && this->encoding_ == msg->encoding)
+    return false;
+  else
+    return true;
+}
+
 static enum AVHWDeviceType get_hw_type(const std::string& name)
 {
   enum AVHWDeviceType type = av_hwdevice_find_type_by_name(name.c_str());
@@ -92,8 +97,8 @@ static enum AVHWDeviceType get_hw_type(const std::string& name)
 
 static AVBufferRef* hw_decoder_init(AVBufferRef** hwDeviceContext, const enum AVHWDeviceType hwType)
 {
-  int rc = av_hwdevice_ctx_create(hwDeviceContext, hwType, NULL, NULL, 0);
-  if (rc < 0)
+  int err = 0;
+  if ((err = av_hwdevice_ctx_create(hwDeviceContext, hwType, NULL, NULL, 0)) < 0)
   {
     ROS_ERROR_STREAM("failed to create context for HW device: " << hwType);
     return (NULL);
@@ -182,7 +187,9 @@ bool FFMPEGDecoder::initDecoder(int width, int height, const std::string& codecN
       if (avcodec_open2(codecContext_, codec, NULL) < 0)
       {
         ROS_WARN_STREAM("open context failed for " + codecName);
-        av_free(codecContext_);
+        avcodec_free_context(&codecContext_);
+        if (hwDeviceContext_)
+          av_buffer_unref(&hwDeviceContext_);
         codecContext_ = NULL;
         codec         = NULL;
         continue;
@@ -208,12 +215,15 @@ bool FFMPEGDecoder::initDecoder(int width, int height, const std::string& codecN
   }
   if (codecName != codecUsed)
   {
-    ROS_INFO_STREAM("message encoded with " << codecName << " decoded with " << codecUsed);
+    ROS_INFO_STREAM_ONCE("message encoded with " << codecName << " decoded with " << codecUsed);
+    ROS_DEBUG_STREAM("message encoded with " << codecName << " decoded with " << codecUsed);
   }
   else
   {
     ROS_INFO_STREAM("decoding with " << codecUsed);
   }
+  this->width  = width;
+  this->height = height;
   return (true);
 }
 
@@ -224,11 +234,7 @@ bool FFMPEGDecoder::decodePacket(const FFMPEGPacket::ConstPtr& msg)
   {
     t0 = ros::WallTime::now();
   }
-  if (msg->encoding != encoding_)
-  {
-    ROS_ERROR_STREAM("cannot change encoding on the fly!!!");
-    return (false);
-  }
+
   AVCodecContext* ctx = codecContext_;
   AVPacket packet;
   av_init_packet(&packet);

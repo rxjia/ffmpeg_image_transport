@@ -60,6 +60,16 @@ public:
     Lock lock(mutex_);
     preset_ = p;
   }
+  void setRcMode(const std::string& p)
+  {
+    Lock lock(mutex_);
+    rc_mode_ = p;
+  }
+  void setRcValue(int p)
+  {
+    Lock lock(mutex_);
+    rc_value_ = p;
+  }
   void setQMax(int q)
   {
     Lock lock(mutex_);
@@ -95,6 +105,7 @@ public:
     return (codecContext_ != NULL);
   }
   bool initialize(int width, int height, Callback callback);
+  bool checkImageSize(int witdh, int height) const;
 
   void reset();
   // encode image
@@ -115,11 +126,13 @@ private:
   std::string codecName_;
   std::string preset_;
   std::string profile_;
+  std::string rc_mode_;
   AVPixelFormat pixFormat_{ AV_PIX_FMT_YUV420P };
   AVRational timeBase_{ 1, 40 };
   AVRational frameRate_{ 40, 1 };
   int GOPSize_{ 15 };
-  int64_t bitRate_{ 1000000 };
+  int64_t bitRate_{ 1000 };
+  int64_t rc_value_{ 23 };
   int qmax_{ 0 };
   // libav state
   AVCodecContext* codecContext_{ NULL };
@@ -141,5 +154,7 @@ private:
   TDiff tdiffCopyOut_;
   TDiff tdiffPublish_;
   TDiff tdiffTotal_;
+  int width  = -1;
+  int height = -1;
 };
 }  // namespace ffmpeg_image_transport

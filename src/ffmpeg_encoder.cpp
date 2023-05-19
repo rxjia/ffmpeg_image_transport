@@ -63,8 +63,18 @@ bool FFMPEGEncoder::initialize(int width, int height, Callback callback)
   return (openCodec(width, height));
 }
 
+bool FFMPEGEncoder::checkImageSize(int witdh, int height) const
+{
+  Lock lock(mutex_);
+  if (this->width == witdh && this->height == height)
+    return true;
+  else
+    return false;
+}
+
 bool FFMPEGEncoder::openCodec(int width, int height)
 {
+  int ret       = -1;
   codecContext_ = NULL;
   try
   {
@@ -79,20 +89,31 @@ bool FFMPEGEncoder::openCodec(int width, int height)
                              "multiple of 32 but is: " +
                              std::to_string(width)));
     }
+    if (codecName_ == "libx264")
+    {
+      av_log_set_level(AV_LOG_FATAL);
+    }
+    else
+    {
+      av_log_set_level(AV_LOG_INFO);
+    }
     // find codec
     AVCodec* codec = avcodec_find_encoder_by_name(codecName_.c_str());
     if (!codec)
     {
       throw(std::runtime_error("cannot find codec: " + codecName_));
     }
+
     // allocate codec context
     codecContext_ = avcodec_alloc_context3(codec);
     if (!codecContext_)
     {
       throw(std::runtime_error("cannot allocate codec context!"));
     }
-    codecContext_->bit_rate  = bitRate_;
-    codecContext_->qmax      = qmax_;  // 0: highest, 63: worst quality bound
+    if (bitRate_ != -1)
+      codecContext_->bit_rate = bitRate_ * 1000;
+    if (qmax_ != -1)
+      codecContext_->qmax = qmax_;  // 0: highest, 63: worst quality bound
     codecContext_->width     = width;
     codecContext_->height    = height;
     codecContext_->time_base = timeBase_;
@@ -101,13 +122,13 @@ bool FFMPEGEncoder::openCodec(int width, int height)
     // gop size is number of frames between keyframes
     // small gop -> higher bandwidth, lower cpu consumption
     codecContext_->gop_size = GOPSize_;
+
     // number of bidirectional frames (per group?).
     // NVenc can only handle zero!
     codecContext_->max_b_frames = 0;
 
     // encoded pixel format. Must be supported by encoder
-    // check with e.g.: ffmpeg -h encoder=h264_nvenc -pix_fmts
-
+    // check with e.g.: ffmpeg -h encoder=h264_nvenc
     codecContext_->pix_fmt = pixFormat_;
 
     if (av_opt_set(codecContext_->priv_data, "profile", profile_.c_str(), AV_OPT_SEARCH_CHILDREN) != 0)
@@ -119,9 +140,26 @@ bool FFMPEGEncoder::openCodec(int width, int height)
     {
       ROS_ERROR_STREAM("cannot set preset: " << preset_);
     }
+
+    // unsigned char *mime_type = NULL;
+    // av_opt_get(codecContext_->priv_data, "crf", AV_OPT_SEARCH_CHILDREN, &mime_type);
+    // ROS_ERROR_STREAM("crf: " << mime_type);
+    if (rc_mode_ == "crf")
+    {
+      if (av_opt_set(codecContext_->priv_data, "crf", std::to_string(rc_value_).c_str(), AV_OPT_SEARCH_CHILDREN))
+        ROS_ERROR_STREAM("cannot set crf: " << rc_value_);
+    }
+    else if (rc_mode_ == "cqp")
+    {
+      if (av_opt_set(codecContext_->priv_data, "qp", std::to_string(rc_value_).c_str(), AV_OPT_SEARCH_CHILDREN))
+        ROS_ERROR_STREAM("cannot set qp: " << rc_value_);
+    }
+
+    ROS_DEBUG_STREAM("cur bit_rate: " << codecContext_->bit_rate);
+
     ROS_DEBUG(
         "codec: %10s, profile: %10s, preset: %10s,"
-        " bit_rate: %10ld qmax: %2d",
+        " bit_rate: %10ldK qmax: %2d",
         codecName_.c_str(),
         profile_.c_str(),
         preset_.c_str(),
@@ -133,9 +171,9 @@ bool FFMPEGEncoder::openCodec(int width, int height)
        ROS_ERROR_STREAM("cannot set surfaces!");
        }
     */
-    if (avcodec_open2(codecContext_, codec, NULL) < 0)
+    if ((ret = avcodec_open2(codecContext_, codec, NULL)) < 0)
     {
-      throw(std::runtime_error("cannot open codec!"));
+      throw(std::runtime_error("cannot open codec! ret: " + std::to_string(ret)));
     }
     ROS_DEBUG_STREAM("opened codec: " << codecName_);
     frame_ = av_frame_alloc();
@@ -172,6 +210,8 @@ bool FFMPEGEncoder::openCodec(int width, int height)
     return (false);
   }
   ROS_DEBUG_STREAM("intialized codec " << codecName_ << " for image: " << width << "x" << height);
+  this->width  = width;
+  this->height = height;
   return (true);
 }
 

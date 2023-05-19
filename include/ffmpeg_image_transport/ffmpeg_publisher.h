@@ -16,8 +16,8 @@
 
 namespace ffmpeg_image_transport
 {
-typedef image_transport::SimplePublisherPlugin<ffmpeg_image_transport_msgs::FFMPEGPacket> FFMPEGPublisherPlugin;
-class FFMPEGPublisher : public FFMPEGPublisherPlugin
+typedef image_transport::SimplePublisherPlugin<ffmpeg_image_transport_msgs::FFMPEGPacket> Base;
+class FFMPEGPublisher : public Base
 {
   typedef std::unique_lock<std::recursive_mutex> Lock;
   using FFMPEGPacketConstPtr = ffmpeg_image_transport_msgs::FFMPEGPacketConstPtr;
@@ -40,7 +40,7 @@ protected:
   void disconnectCallback(const ros::SingleSubscriberPublisher& pub) override;
 
 private:
-  void packetReady(const FFMPEGPacketConstPtr& pkt);
+  void packetReady(const FFMPEGPacketConstPtr& pkt) const;
   void setCodecFromConfig(const EncoderDynConfig& cfg);
   void initConfigServer();
   // variables ---------

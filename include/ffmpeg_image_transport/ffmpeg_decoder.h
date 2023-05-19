@@ -45,7 +45,7 @@ public:
   // providing callback to be called when frame is complete.
   // You must still call decodePacket(msg) afterward!
   bool initialize(const FFMPEGPacket::ConstPtr& msg, Callback callback, const std::string& codec = std::string());
-
+  bool needReset(const FFMPEGPacket::ConstPtr& msg) const;
   // clears all state, but leaves config intact
   void reset();
   // decode packet (may result in frame callback!)
@@ -77,5 +77,7 @@ private:
   enum AVPixelFormat hwPixFormat_;
   AVPacket packet_;
   AVBufferRef* hwDeviceContext_{ NULL };
+  int width  = -1;
+  int height = -1;
 };
 }  // namespace ffmpeg_image_transport

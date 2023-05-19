@@ -21,6 +21,8 @@ class FFMPEGSubscriber : public FFMPEGSubscriberPlugin
 public:
   virtual ~FFMPEGSubscriber()
   {
+    ROS_DEBUG("FFMPEGSubscriber destructor called!");
+    decoder_.reset();
   }
 
   virtual std::string getTransportName() const
