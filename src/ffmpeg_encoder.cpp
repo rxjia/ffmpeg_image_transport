@@ -137,7 +137,34 @@ bool FFMPEGEncoder::openCodec(int width, int height)
 
     if (av_opt_set(codecContext_->priv_data, "preset", preset_.c_str(), AV_OPT_SEARCH_CHILDREN) != 0)
     {
-      ROS_ERROR_STREAM("cannot set preset: " << preset_);
+      ROS_ERROR_STREAM("cannot set preset: " << preset_ << " " << av_err2str(ret));
+    }
+
+    if (zerolatency_)
+    {
+      if (codecName_ == "libx264")
+      {
+        if ((ret = av_opt_set(codecContext_->priv_data, "tune", "zerolatency", 0)) != 0)
+        {
+          ROS_ERROR_STREAM("cannot set tune: zerolatency "
+                           << " " << av_err2str(ret));
+        }
+      }
+      else if (codecName_ == "h264_nvenc" || codecName_ == "hevc_nvenc")
+      {
+        if ((ret = av_opt_set(codecContext_->priv_data, "zerolatency", "1", 0)) != 0)
+        {
+          ROS_ERROR_STREAM("cannot set zerolatency: " << av_err2str(ret));
+        }
+        if ((ret = av_opt_set(codecContext_->priv_data, "delay", "0", 0)) != 0)
+        {
+          ROS_ERROR_STREAM("cannot set delay: " << av_err2str(ret));
+        }
+      }
+      else
+      {
+        ROS_WARN_STREAM("zerolatency is not supported for codec: " << codecName_);
+      }
     }
 
     // unsigned char *mime_type = NULL;
@@ -364,5 +391,10 @@ void FFMPEGEncoder::resetTimers()
   frameCnt_      = 0;
   totalOutBytes_ = 0;
   totalInBytes_  = 0;
+}
+void FFMPEGEncoder::setZerolatency(bool zerolatency)
+{
+  Lock lock(mutex_);
+  zerolatency_ = zerolatency;
 }
 }  // namespace ffmpeg_image_transport

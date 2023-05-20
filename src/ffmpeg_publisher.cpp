@@ -24,6 +24,7 @@ static bool is_equal(const EncoderDynConfig& a, const EncoderDynConfig& b)
           a.qmax     == b.qmax &&
           a.bit_rate == b.bit_rate &&
           a.gop_size == b.gop_size &&
+          a.zerolatency          == b.zerolatency &&
           a.measure_performance  == b.measure_performance &&
           a.performance_interval == b.performance_interval;
   // clang-format on
@@ -62,6 +63,7 @@ void FFMPEGPublisher::setCodecFromConfig(const EncoderDynConfig& config)
   encoder_.setQMax(config.qmax);
   encoder_.setBitRate(config.bit_rate);
   encoder_.setGOPSize(config.gop_size);
+  encoder_.setZerolatency(config.zerolatency);
   encoder_.setMeasurePerformance(config.measure_performance);
   ROS_DEBUG_STREAM("FFMPEGPublisher codec: " << config.encoder << ", profile: " << config.profile
                                              << ", preset: " << config.preset << ", rc_mode: " << config.rc_mode

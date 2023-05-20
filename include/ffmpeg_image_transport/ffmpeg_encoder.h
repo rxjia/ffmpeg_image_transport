@@ -127,13 +127,19 @@ private:
   std::string preset_;
   std::string profile_;
   std::string rc_mode_;
+  int64_t rc_value_{ 23 };
+  int qmax_{ 0 };
+  int64_t bitRate_{ 1000 };
+  int GOPSize_{ 15 };
+  bool zerolatency_{ true };
+
+public:
+  void setZerolatency(bool zerolatency);
+
+private:
   AVPixelFormat pixFormat_{ AV_PIX_FMT_YUV420P };
   AVRational timeBase_{ 1, 40 };
   AVRational frameRate_{ 40, 1 };
-  int GOPSize_{ 15 };
-  int64_t bitRate_{ 1000 };
-  int64_t rc_value_{ 23 };
-  int qmax_{ 0 };
   // libav state
   AVCodecContext* codecContext_{ NULL };
   AVFrame* frame_{ NULL };
