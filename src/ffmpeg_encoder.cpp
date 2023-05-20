@@ -13,21 +13,22 @@
 
 namespace ffmpeg_image_transport
 {
+char av_error[AV_ERROR_MAX_STRING_SIZE] = { 0 };
+#define av_err2str(errnum) av_make_error_string(av_error, AV_ERROR_MAX_STRING_SIZE, errnum)
 
 FFMPEGEncoder::FFMPEGEncoder()
 {
   // must init the packet and set the pointers to zero
   // in case a closeCodec() happens right away,
   // and av_packet_unref() is called.
-  av_init_packet(&packet_);
-  packet_.data = NULL;  // packet data will be allocated by the encoder
-  packet_.size = 0;
+  //  av_init_packet(&pkt_);
+  //  pkt_.data = NULL;  // packet data will be allocated by the encoder
+  //  pkt_.size = 0;
 }
 
 FFMPEGEncoder::~FFMPEGEncoder()
 {
-  Lock lock(mutex_);
-  closeCodec();
+  reset();
 }
 
 void FFMPEGEncoder::reset()
@@ -38,22 +39,23 @@ void FFMPEGEncoder::reset()
 
 void FFMPEGEncoder::closeCodec()
 {
-  if (codecContext_)
+  if (pkt_)
   {
-    avcodec_close(codecContext_);
-    codecContext_ = NULL;
+    if (pkt_->data)
+    {
+      av_packet_unref(pkt_);  // free packet allocated by encoder
+    }
+    av_packet_free(&pkt_);
   }
+
   if (frame_)
   {
-    av_free(frame_);
-    frame_ = 0;
+    av_freep(&frame_->data[0]);
+    av_frame_free(&frame_);
   }
-  if (packet_.data != NULL)
-  {
-    av_packet_unref(&packet_);  // free packet allocated by encoder
-    packet_.data = NULL;
-    packet_.size = 0;
-  }
+
+  if (codecContext_)
+    avcodec_free_context(&codecContext_);
 }
 
 bool FFMPEGEncoder::initialize(int width, int height, Callback callback)
@@ -90,13 +92,10 @@ bool FFMPEGEncoder::openCodec(int width, int height)
                              std::to_string(width)));
     }
     if (codecName_ == "libx264")
-    {
       av_log_set_level(AV_LOG_FATAL);
-    }
     else
-    {
       av_log_set_level(AV_LOG_INFO);
-    }
+
     // find codec
     AVCodec* codec = avcodec_find_encoder_by_name(codecName_.c_str());
     if (!codec)
@@ -190,26 +189,15 @@ bool FFMPEGEncoder::openCodec(int width, int height)
       throw(std::runtime_error("cannot alloc image!"));
     }
     // Initialize packet
-    av_init_packet(&packet_);
-    packet_.data = NULL;  // packet data will be allocated by the encoder
-    packet_.size = 0;
+    pkt_ = av_packet_alloc();
   }
   catch (const std::runtime_error& e)
   {
     ROS_ERROR_STREAM(e.what());
-    if (codecContext_)
-    {
-      avcodec_close(codecContext_);
-      codecContext_ = NULL;
-    }
-    if (frame_)
-    {
-      av_free(frame_);
-      frame_ = 0;
-    }
+    closeCodec();
     return (false);
   }
-  ROS_DEBUG_STREAM("intialized codec " << codecName_ << " for image: " << width << "x" << height);
+  ROS_INFO_STREAM("intialized codec " << codecName_ << " for image: " << width << "x" << height);
   this->width  = width;
   this->height = height;
   return (true);
@@ -298,36 +286,46 @@ int FFMPEGEncoder::drainPacket(const std_msgs::Header& header, int width, int he
   {
     t0 = ros::WallTime::now();
   }
-  int ret = avcodec_receive_packet(codecContext_, &packet_);
+
+  int ret = avcodec_receive_packet(codecContext_, pkt_);
+  if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+  {
+    return ret;
+  }
+  else if (ret < 0)
+  {
+    ROS_ERROR_STREAM("Error during encoding: ret=" << ret << " [" << av_err2str(ret) << "");
+    return ret;
+  }
+
   if (measurePerformance_)
   {
     t1 = ros::WallTime::now();
     tdiffReceivePacket_.update((t1 - t0).toSec());
   }
-  const AVPacket& pk = packet_;
-  if (ret == 0 && packet_.size > 0)
+
+  if (ret == 0 && pkt_->size > 0)
   {
-    FFMPEGPacket* packet = new FFMPEGPacket;
-    FFMPEGPacketConstPtr pptr(packet);
-    packet->data.resize(packet_.size);
-    packet->img_width  = width;
-    packet->img_height = height;
-    packet->pts        = pk.pts;
-    packet->flags      = pk.flags;
-    memcpy(&(packet->data[0]), packet_.data, packet_.size);
+    ffmpeg_image_transport_msgs::FFMPEGPacketPtr msg = boost::make_shared<ffmpeg_image_transport_msgs::FFMPEGPacket>();
+    msg->data.resize(pkt_->size);
+    msg->img_width  = width;
+    msg->img_height = height;
+    msg->pts        = pkt_->pts;
+    msg->flags      = pkt_->flags;
+    memcpy(&(msg->data[0]), pkt_->data, pkt_->size);
     if (measurePerformance_)
     {
       t2 = ros::WallTime::now();
-      totalOutBytes_ += packet_.size;
+      totalOutBytes_ += pkt_->size;
       tdiffCopyOut_.update((t2 - t1).toSec());
     }
-    packet->header = header;
-    auto it        = ptsToStamp_.find(pk.pts);
+    msg->header = header;
+    auto it     = ptsToStamp_.find(pkt_->pts);
     if (it != ptsToStamp_.end())
     {
-      packet->header.stamp = it->second;
-      packet->encoding     = codecName_;
-      callback_(pptr);  // deliver packet callback
+      msg->header.stamp = it->second;
+      msg->encoding     = codecName_;
+      callback_(msg);  // deliver packet callback
       if (measurePerformance_)
       {
         const ros::WallTime t3 = ros::WallTime::now();
@@ -337,10 +335,9 @@ int FFMPEGEncoder::drainPacket(const std_msgs::Header& header, int width, int he
     }
     else
     {
-      ROS_ERROR_STREAM("pts " << pk.pts << " has no time stamp!");
+      ROS_ERROR_STREAM("pts " << pkt_->pts << " has no time stamp!");
     }
-    av_packet_unref(&packet_);  // free packet allocated by encoder
-    av_init_packet(&packet_);   // prepare next one
+    av_packet_unref(pkt_);
   }
   return (ret);
 }

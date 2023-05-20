@@ -18,12 +18,14 @@ static bool is_equal(const EncoderDynConfig& a, const EncoderDynConfig& b)
   // clang-format off
   return  a.encoder  == b.encoder &&
           a.profile  == b.profile &&
+          a.preset   == b.preset &&
           a.rc_mode  == b.rc_mode &&
           a.rc_value == b.rc_value &&
           a.qmax     == b.qmax &&
           a.bit_rate == b.bit_rate &&
           a.gop_size == b.gop_size &&
-          a.measure_performance == b.measure_performance;
+          a.measure_performance  == b.measure_performance &&
+          a.performance_interval == b.performance_interval;
   // clang-format on
 }
 
