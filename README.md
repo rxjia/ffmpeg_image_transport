@@ -20,7 +20,6 @@ Optionally get the additional set of ffmpeg tools:
 
     git clone git@github.com:daniilidis-group/ffmpeg_image_transport_tools.git
 
-
 ## Requirements: FFmpeg v4.0 or later, and a "reasonable" resolution
 
 At some point this software worked on the following systems:
@@ -32,12 +31,12 @@ At some point this software worked on the following systems:
 
 If you have ffmpeg 4.0 or later you may be able to compile against default header files:
 
-	sudo apt install ffmpeg
+    sudo apt install ffmpeg
 
 If you don't have ffmpeg 4.0 or later, or you hit compile errors
-(supposedly even happens now on Ubuntu 18.04), 
+(supposedly even happens now on Ubuntu 18.04),
 [follow these instructions to compile ffmpeg from scratch](docs/compile_ffmpeg.md), and point the
-transport to the right place: 
+transport to the right place:
 
     ffmpeg_dir=<here the ffmpeg_dir>
     catkin config -DCMAKE_BUILD_TYPE=Release -DFFMPEG_LIB=${ffmpeg_dir}/build/lib -DFFMPEG_INC=${ffmpeg_dir}/build/include
@@ -55,7 +54,7 @@ This should be easy as running the following inside your catkin workspace
 
     catkin config -DCMAKE_BUILD_TYPE=Release
 
-or, if you have your own version of ffmpeg installaed under ``${ffmpeg_dir`` (see above)
+or, if you have your own version of ffmpeg installaed under `${ffmpeg_dir}` (see above)
 
     catkin config -DCMAKE_BUILD_TYPE=Release -DFFMPEG_LIB=${ffmpeg_dir}/build/lib -DFFMPEG_INC=${ffmpeg_dir}/build/include
 
@@ -67,15 +66,18 @@ then compile should be as easy as this:
 
 Usage should be transparent, but the ffmpeg image transport plugin
 needs to be available on both the publishing and the subscribing
-node. You also *need to add the location to your custom built ffmpeg
-library* to ``LD_LIBRARY_PATH``, like so (change path to match yours):
+node. You also _need to add the location to your custom built ffmpeg
+library_ to `LD_LIBRARY_PATH`, like so (change path to match yours):
+
 ```
 export LD_LIBRARY_PATH=$HOME/catkin_ws/ffmpeg/build/lib:$LD_LIBRARY_PATH
 ```
+
 Once done, you should get the following output when you run
-``list_transports``:
+`list_transports`:
+
 ```
-rosrun image_transport list_transports 
+rosrun image_transport list_transports
 Declared transports:
 ... some stuff ...
 image_transport/ffmpeg
@@ -86,17 +88,18 @@ Details:
 ... some stuff ...
 "image_transport/ffmpeg"
  - Provided by package: ffmpeg_image_transport
- - Publisher: 
+ - Publisher:
       This plugin encodes frame into ffmpeg compressed packets
-    
- - Subscriber: 
+
+ - Subscriber:
       This plugin decodes frame from ffmpeg compressed packets
 ```
 
 If it says something about "plugins not built", that means the
-``LD_LIBRARY_PATH`` is not set correctly.
+`LD_LIBRARY_PATH` is not set correctly.
 
 ### republishing
+
 Most ROS nodes that publish images use an image transport for that. If
 not you can use a republish node to convert images into an ffmpeg
 stream. The following line will start a republish node in ffmpeg format:
@@ -108,43 +111,53 @@ rosrun image_transport republish raw in:=/webcam/image_raw ffmpeg out:=/webcam/i
 ### encoder parameters
 
 The image transport has various parameters that you can configure
-dynamically via ``rqt_reconfigure``, or specify at startup by
+dynamically via `rqt_reconfigure`, or specify at startup by
 prepending the topic name. For instance to use the unaccelerated
-``libx264`` encoding, start a republish node like this:
+`libx264` encoding, start a republish node like this:
+
 ```
 rosrun image_transport republish raw in:=/webcam/image_raw ffmpeg __name:=repub out:=~/image_raw  _/image_raw/ffmpeg/encoder:=libx264
 ```
-Note: I had to ``__name`` the node to get the ros parameter show up under the topic name.
+
+Note: I had to `__name` the node to get the ros parameter show up under the topic name.
 
 Parameters (see ffmpeg h264 documentation for explanation):
 
-- ``encoder``: ffmpeg encoding to use. Allowed values: ``h265_nvenc``,
-  ``hevc_nvenc``, ``libx264`` (no GPU). Default: ``hevc_nvenc``.
-- ``profile``: ffmpeg profile. Allowed values: ``main``, ``main10``,
-  ``rext``, ``high``. Default: ``main``.
-- ``qmax``: maximum allowed quantization, controls quality. Range 0-63, default: 10.
-- ``bit_rate``: bit rate in bits/sec. Range 10-2000000000, default: 8242880.
-- ``gop_size``: gop size (number of frames): Range 1-128, default: 15
-- ``measure_performance``: switch on performance debugging output. Default: false.
-- ``performance_interval``: number of frames between performance printouts. Default: 175.
+- `encoder`: ffmpeg encoding to use. Allowed values: `h264_nvenc`,
+  `hevc_nvenc`, `libx264` (no GPU). Default: `h264_nvenc`.
+- `profile`: ffmpeg profile. Default: `main`. Allowed values: `baseline`, `main`, `main10`, `rext`, `high`.
+- `preset`: ffmpeg preset. Default: `slow`. Allowed values:
+  - `libx264`: `slow`, `medium`, `fast`
+  - `h264_nvenc`: `slow`, `medium`, `fast`, `hp`, `hq`, `bd`, `ll`, `llhq`, `llhp`, `lossless`, `losslesshp`.
+- `qmax`: maximum allowed quantization, controls quality. Range 0-51, default: -1(unset).
+- `bit_rate`: bit rate in Kbits/sec. Range 1-10000, default: 2000.
+- `gop_size`: gop size (number of frames): Range 1-128, default: 15
+- `zerolatency`: whether enable zerolatency mode. Default: true.
+- `measure_performance`: switch on performance debugging output. Default: false.
+- `performance_interval`: number of frames between performance printouts. Default: 175.
 
-### encoder parameters
+### decoder parameters
 
 Usually the decoder infers from the received encoding type what decoding scheme to use.
 You can overwrite it with a node-level parameter though:
 
-- ``decoder_type``:
-  - ``h264``: used if encoding is ``libx264`` or ``h264_nvenc``.
-  - ``hevc_cuvid``: first tried if encoding is ``hevc_nvenc``.
-  - ``hevc``: second tried if encoding is ``hevc_nvenc``.
+- `decoder/type`:
 
-For example to force ``hevc`` decoding, run a node like this:
+  - `h264`: used if encoding is `libx264` or `h264_nvenc`.
+  - `hevc_cuvid`: first tried if encoding is `hevc_nvenc`.
+  - `hevc`: second tried if encoding is `hevc_nvenc`.
+
+- `decoder/hwacc`: hardware acceleration type
+  - `cuda` (default)
+  - `none`
+
+For example to force `hevc` decoding, run a node like this:
+
 ```
-rosrun image_transport republish ffmpeg in:=/repub/image_raw raw out:=~/image_raw _/ffmpeg/decoder_type:=hevc
+rosrun image_transport republish ffmpeg in:=/repub/image_raw raw out:=~/image_raw _ffmpeg/decoder/type:=hevc
 ```
 
 ## Trouble shooting:
-
 
 On e.g. Ubuntu 16.04, you need a newer version of ffmpeg. If you get an error like this one,
 you need a newer version of ffmpeg:
@@ -159,11 +172,15 @@ If the build still fails, make sure you start from scratch:
     catkin clean ffmpeg_image_transport
 
 ## gpu limit
+
 can not run much ffmpeg publisher
+
 ```
 [h264_nvenc @ 0x7fe9d4879340] OpenEncodeSessionEx failed: out of memory (10)
 [h264_nvenc @ 0x7fe9d4879340] No NVENC capable devices found
 ```
+
 ### Reference
+
 https://developer.nvidia.com/video-encode-and-decode-gpu-support-matrix-new#Encoder
 https://github.com/keylase/nvidia-patch

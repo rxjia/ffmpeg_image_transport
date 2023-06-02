@@ -13,9 +13,10 @@ void FFMPEGSubscriber::subscribeImpl(ros::NodeHandle& nh, const std::string& bas
                                      const Callback& callback, const ros::VoidPtr& tracked_object,
                                      const image_transport::TransportHints& transport_hints)
 {
-  const std::string pname = ros::this_node::getName() + "/ffmpeg/decoder_type";
-  nh.param<std::string>(pname, decoderType_, "");
-  ROS_DEBUG_STREAM("SUBSCRIBER: decoder type: " << decoderType_.c_str());
+  ros::NodeHandle private_nh("~");
+  private_nh.param<std::string>("ffmpeg/decoder/type", decoderType_, "");
+  private_nh.param<std::string>("ffmpeg/decoder/hwacc", decoderHwAcc_, "cuda");
+  ROS_DEBUG_STREAM("SUBSCRIBER: decoder type: " << decoderType_.c_str() << " hwacc: " << decoderHwAcc_.c_str());
   // bump queue size a bit to avoid lost packets
   queue_size = std::max((int)queue_size, 20);
   FFMPEGSubscriberPlugin::subscribeImpl(nh, base_topic, queue_size, callback, tracked_object, transport_hints);
@@ -34,7 +35,7 @@ void FFMPEGSubscriber::internalCallback(const FFMPEGPacket::ConstPtr& msg, const
     }
 
     if (!decoder_.initialize(
-            msg, [&user_cb](const ImageConstPtr& img, bool isKeyFrame) { user_cb(img); }, decoderType_))
+            msg, [&user_cb](const ImageConstPtr& img, bool isKeyFrame) { user_cb(img); }, decoderType_, decoderHwAcc_))
     {
       ROS_ERROR_STREAM("cannot initialize decoder!");
       return;

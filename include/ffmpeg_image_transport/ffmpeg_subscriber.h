@@ -40,6 +40,7 @@ private:
   void frameReady(const ImageConstPtr& img, bool isKeyFrame) const;
   FFMPEGDecoder decoder_;
   std::string decoderType_;
+  std::string decoderHwAcc_;
   const Callback* userCallback_;
 };
 }  // namespace ffmpeg_image_transport

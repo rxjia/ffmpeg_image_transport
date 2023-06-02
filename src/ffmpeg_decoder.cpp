@@ -48,7 +48,8 @@ void FFMPEGDecoder::reset()
     av_buffer_unref(&hwDeviceContext_);
 }
 
-bool FFMPEGDecoder::initialize(const FFMPEGPacket::ConstPtr& msg, Callback callback, const std::string& codecName)
+bool FFMPEGDecoder::initialize(const FFMPEGPacket::ConstPtr& msg, Callback callback, const std::string& codecName,
+                               const std::string& hwName)
 {
   callback_         = callback;
   std::string cname = codecName;
@@ -70,9 +71,8 @@ bool FFMPEGDecoder::initialize(const FFMPEGPacket::ConstPtr& msg, Callback callb
     codecs.push_back(codecName);
   }
   encoding_ = msg->encoding;
-  return (initDecoder(msg->img_width, msg->img_height, cname, codecs));
+  return (initDecoder(msg->img_width, msg->img_height, cname, codecs, hwName));
 }
-
 bool FFMPEGDecoder::needReset(const FFMPEGPacket::ConstPtr& msg) const
 {
   if (this->width == msg->img_width && this->height == msg->img_height && this->encoding_ == msg->encoding)
@@ -89,8 +89,8 @@ static enum AVHWDeviceType get_hw_type(const std::string& name)
     ROS_WARN_STREAM("hw accel device is not supported: " << name);
     ROS_INFO_STREAM("available devices:");
     while ((type = av_hwdevice_iterate_types(type)) != AV_HWDEVICE_TYPE_NONE)
-      ROS_INFO_STREAM(av_hwdevice_get_type_name(type));
-    return (type);
+      ROS_INFO_STREAM("  " << av_hwdevice_get_type_name(type));
+    return AV_HWDEVICE_TYPE_NONE;
   }
   return (type);
 }
@@ -100,7 +100,7 @@ static AVBufferRef* hw_decoder_init(AVBufferRef** hwDeviceContext, const enum AV
   int err = 0;
   if ((err = av_hwdevice_ctx_create(hwDeviceContext, hwType, NULL, NULL, 0)) < 0)
   {
-    ROS_ERROR_STREAM("failed to create context for HW device: " << hwType);
+    ROS_ERROR_STREAM("failed to create context for hwType: " << av_hwdevice_get_type_name(hwType));
     return (NULL);
   }
   return (av_buffer_ref(*hwDeviceContext));
@@ -144,9 +144,10 @@ static enum AVPixelFormat find_pix_format(const std::string& codecName, enum AVH
 }
 
 bool FFMPEGDecoder::initDecoder(int width, int height, const std::string& codecName,
-                                const std::vector<std::string>& codecs)
+                                const std::vector<std::string>& codecs, const std::string& hwName)
 {
-  std::string codecUsed = "NO_CODEC_FOUND";
+  std::string codecUsed         = "NO_CODEC_FOUND";
+  enum AVHWDeviceType hwDevType = AV_HWDEVICE_TYPE_NONE;
   try
   {
     const AVCodec* codec = NULL;
@@ -166,16 +167,25 @@ bool FFMPEGDecoder::initDecoder(int width, int height, const std::string& codecN
         continue;
       }
       av_opt_set_int(codecContext_, "refcounted_frames", 1, 0);
-      const std::string hwAcc("cuda");
-      enum AVHWDeviceType hwDevType = get_hw_type(hwAcc);
+      hwDevType = get_hw_type(hwName);
 
       if (hwDevType != AV_HWDEVICE_TYPE_NONE)
       {
-        codecContext_->hw_device_ctx = hw_decoder_init(&hwDeviceContext_, hwDevType);
-        hwPixFormat_                 = find_pix_format(codecName, hwDevType, codec, hwAcc);
-        // must put in global hash for the callback function
-        pix_format_map[codecContext_] = hwPixFormat_;
-        codecContext_->get_format     = get_hw_format;
+        AVBufferRef* hw_device_ctx = hw_decoder_init(&hwDeviceContext_, hwDevType);
+        if (hw_device_ctx != NULL)
+        {
+          codecContext_->hw_device_ctx = hw_device_ctx;
+          hwPixFormat_                 = find_pix_format(codecName, hwDevType, codec, hwName);
+          // must put in global hash for the callback function
+          pix_format_map[codecContext_] = hwPixFormat_;
+          codecContext_->get_format     = get_hw_format;
+        }
+        else
+        {
+          ROS_WARN_STREAM("set hwDevType = AV_HWDEVICE_TYPE_NONE");
+          hwDevType    = AV_HWDEVICE_TYPE_NONE;
+          hwPixFormat_ = AV_PIX_FMT_NONE;
+        }
       }
       else
       {
@@ -215,8 +225,14 @@ bool FFMPEGDecoder::initDecoder(int width, int height, const std::string& codecN
   }
   if (codecName != codecUsed)
   {
-    ROS_INFO_STREAM_ONCE("message encoded with " << codecName << " decoded with " << codecUsed);
-    ROS_DEBUG_STREAM("message encoded with " << codecName << " decoded with " << codecUsed);
+    std::string hwTypeName;
+    const char* c_hwTypeName = av_hwdevice_get_type_name(hwDevType);
+    if (c_hwTypeName)
+      hwTypeName = c_hwTypeName;
+    else
+      hwTypeName = "none";
+    ROS_INFO_STREAM_ONCE("message encoded with " << codecName << ", decoded with: codec[" << codecUsed << "] hw["
+                                                 << hwTypeName << "]");
   }
   else
   {

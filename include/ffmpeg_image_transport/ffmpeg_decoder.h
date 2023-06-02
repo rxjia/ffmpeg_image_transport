@@ -44,7 +44,7 @@ public:
   // Initialize decoder upon first packet received,
   // providing callback to be called when frame is complete.
   // You must still call decodePacket(msg) afterward!
-  bool initialize(const FFMPEGPacket::ConstPtr& msg, Callback callback, const std::string& codec = std::string());
+  bool initialize(const FFMPEGPacket::ConstPtr& msg, Callback callback, const std::string& codec = std::string(), const std::string& hwName = std::string());
   bool needReset(const FFMPEGPacket::ConstPtr& msg) const;
   // clears all state, but leaves config intact
   void reset();
@@ -58,7 +58,7 @@ public:
   void resetTimers();
 
 private:
-  bool initDecoder(int width, int height, const std::string& codecName, const std::vector<std::string>& codec);
+  bool initDecoder(int width, int height, const std::string& codecName, const std::vector<std::string>& codec, const std::string& hwName = std::string());
   // --------- variables
   Callback callback_;
   // mapping of header
