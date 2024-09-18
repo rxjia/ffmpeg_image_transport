@@ -1,0 +1,6 @@
+<launch>
+   <arg name="in" default="/camera/color/image_raw" />
+   <arg name="out" default="~/repub" />
+    <node pkg="image_transport" name="image_republisher" type="republish" args="raw in:=$(arg in) out:=$(arg out)" output="screen">
+    </node>
+</launch>

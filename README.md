@@ -184,3 +184,18 @@ can not run much ffmpeg publisher
 
 https://developer.nvidia.com/video-encode-and-decode-gpu-support-matrix-new#Encoder
 https://github.com/keylase/nvidia-patch
+
+## Delay and Bandwidth e.g. 1280x960 RGB image
+
+|            | rostopic delay | rostopic bw (static img) |
+| ---------- | -------------- | ------------------------ |
+| libx264    | 0.76 s         | 1.5MB/s                  |
+| hevc_nvenc | 0.050 s        | 756 KB/s                 |
+| h265_nvenc | 0.061 s        | 860 KB/s                 |
+
+# ffmpeg args
+
+ffmpeg -i ta.mp4 -c:v libvpx-vp9 out.mkv
+Neither bitrate nor constrained quality specified, using default CRF of 32
+
+due to buffer, h264_nvenc will delay 2 frame: t(frame_from_decoder) = t(frame_from_encoder) - 2

@@ -114,6 +114,7 @@ public:
   // ------- performance statistics
   void printTimers(const std::string& prefix) const;
   void resetTimers();
+  void setZerolatency(bool zerolatency);
 
 private:
   bool openCodec(int width, int height);
@@ -132,9 +133,6 @@ private:
   int64_t bitRate_{ 1000 };
   int GOPSize_{ 15 };
   bool zerolatency_{ true };
-
-public:
-  void setZerolatency(bool zerolatency);
 
 private:
   AVPixelFormat pixFormat_{ AV_PIX_FMT_YUV420P };

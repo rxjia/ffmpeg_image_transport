@@ -8,11 +8,6 @@
 namespace ffmpeg_image_transport
 {
 
-void FFMPEGPublisher::packetReady(const FFMPEGPacketConstPtr& pkt) const
-{
-  (*publishFunction_)(*pkt);
-}
-
 static bool is_equal(const EncoderDynConfig& a, const EncoderDynConfig& b)
 {
   // clang-format off
@@ -74,23 +69,23 @@ void FFMPEGPublisher::setCodecFromConfig(const EncoderDynConfig& config)
 void FFMPEGPublisher::publish(const sensor_msgs::Image& message, const PublishFn& publish_fn) const
 {
   auto me = const_cast<FFMPEGPublisher*>(this);
-  if (encoder_.isInitialized() && !encoder_.checkImageSize(message.width, message.height))
+  if (encoder_.isInitialized() && !encoder_.checkImageSize((int)message.width, (int)message.height))
   {
     me->encoder_.reset();
   }
 
   if (!encoder_.isInitialized())
   {
-    me->publishFunction_ = &publish_fn;
-    if (!me->encoder_.initialize(
-            message.width, message.height, [&publish_fn](const FFMPEGPacketConstPtr& pkt) { publish_fn(*pkt); }))
+    if (!me->encoder_.initialize((int)message.width,
+                                 (int)message.height,
+                                 [&publish_fn](const FFMPEGPacketConstPtr& pkt) { publish_fn(*pkt); }))
     {
       ROS_ERROR_STREAM("cannot initialize encoder!");
       return;
     }
   }
 
-  me->encoder_.encodeImage(message);  // may trigger packetReady() callback(s) from encoder!
+  me->encoder_.encodeImage(message); 
   Lock lock(me->configMutex_);
   if (config_.measure_performance)
   {

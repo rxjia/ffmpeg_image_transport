@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="image_view" name="image_view" type="image_view">
+        <remap from="image" to="/image_republisher/repub" />
+        <param name="image_transport" value="ffmpeg" />
+    </node>
+</launch>

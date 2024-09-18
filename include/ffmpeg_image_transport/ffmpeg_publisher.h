@@ -40,14 +40,12 @@ protected:
   void disconnectCallback(const ros::SingleSubscriberPublisher& pub) override;
 
 private:
-  void packetReady(const FFMPEGPacketConstPtr& pkt) const;
   void setCodecFromConfig(const EncoderDynConfig& cfg);
   void initConfigServer();
   // variables ---------
   typedef dynamic_reconfigure::Server<EncoderDynConfig> ConfigServer;
   std::shared_ptr<ros::NodeHandle> nh_;
   std::shared_ptr<ConfigServer> configServer_;
-  const PublishFn* publishFunction_{ NULL };
   FFMPEGEncoder encoder_;
   unsigned int frameCounter_{ 0 };
   EncoderDynConfig config_;

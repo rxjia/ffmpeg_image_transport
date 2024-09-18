@@ -18,12 +18,6 @@ char av_error[AV_ERROR_MAX_STRING_SIZE] = { 0 };
 
 FFMPEGEncoder::FFMPEGEncoder()
 {
-  // must init the packet and set the pointers to zero
-  // in case a closeCodec() happens right away,
-  // and av_packet_unref() is called.
-  //  av_init_packet(&pkt_);
-  //  pkt_.data = NULL;  // packet data will be allocated by the encoder
-  //  pkt_.size = 0;
 }
 
 FFMPEGEncoder::~FFMPEGEncoder()
