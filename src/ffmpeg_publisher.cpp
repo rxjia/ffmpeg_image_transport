@@ -7,7 +7,6 @@
 
 namespace ffmpeg_image_transport
 {
-
 static bool is_equal(const EncoderDynConfig& a, const EncoderDynConfig& b)
 {
   // clang-format off
@@ -76,8 +75,7 @@ void FFMPEGPublisher::publish(const sensor_msgs::Image& message, const PublishFn
 
   if (!encoder_.isInitialized())
   {
-    if (!me->encoder_.initialize((int)message.width,
-                                 (int)message.height,
+    if (!me->encoder_.initialize((int)message.width, (int)message.height,
                                  [&publish_fn](const FFMPEGPacketConstPtr& pkt) { publish_fn(*pkt); }))
     {
       ROS_ERROR_STREAM("cannot initialize encoder!");
@@ -85,7 +83,7 @@ void FFMPEGPublisher::publish(const sensor_msgs::Image& message, const PublishFn
     }
   }
 
-  me->encoder_.encodeImage(message); 
+  me->encoder_.encodeImage(message);
   Lock lock(me->configMutex_);
   if (config_.measure_performance)
   {

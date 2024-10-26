@@ -13,7 +13,6 @@
 
 namespace ffmpeg_image_transport
 {
-
 FFMPEGDecoder::FFMPEGDecoder()
 {
   codecMap_["h264_nvenc"] = { "h264" };
@@ -285,16 +284,11 @@ bool FFMPEGDecoder::decodePacket(const FFMPEGPacket::ConstPtr& msg)
     // convert image to something palatable
     if (!swsContext_)
     {
-      swsContext_ = sws_getContext(ctx->width,
-                                   ctx->height,
+      swsContext_ = sws_getContext(ctx->width, ctx->height,
                                    (AVPixelFormat)frame->format,  // src
-                                   ctx->width,
-                                   ctx->height,
+                                   ctx->width, ctx->height,
                                    (AVPixelFormat)colorFrame_->format,  // dest
-                                   SWS_FAST_BILINEAR,
-                                   NULL,
-                                   NULL,
-                                   NULL);
+                                   SWS_FAST_BILINEAR, NULL, NULL, NULL);
       if (!swsContext_)
       {
         ROS_ERROR("cannot allocate sws context!!!!");
@@ -311,19 +305,11 @@ bool FFMPEGDecoder::decodePacket(const FFMPEGPacket::ConstPtr& msg)
     image->data.resize(image->step * image->height);
 
     // bend the memory pointers in colorFrame to the right locations
-    av_image_fill_arrays(colorFrame_->data,
-                         colorFrame_->linesize,
-                         &(image->data[0]),
-                         (AVPixelFormat)colorFrame_->format,
-                         colorFrame_->width,
-                         colorFrame_->height,
-                         1);
-    sws_scale(swsContext_,
-              frame->data,
-              frame->linesize,
+    av_image_fill_arrays(colorFrame_->data, colorFrame_->linesize, &(image->data[0]),
+                         (AVPixelFormat)colorFrame_->format, colorFrame_->width, colorFrame_->height, 1);
+    sws_scale(swsContext_, frame->data, frame->linesize,
               0,  // src
-              ctx->height,
-              colorFrame_->data,
+              ctx->height, colorFrame_->data,
               colorFrame_->linesize);  // dest
     auto it = ptsToStamp_.find(decodedFrame_->pts);
     if (it == ptsToStamp_.end())

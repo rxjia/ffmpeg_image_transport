@@ -8,7 +8,6 @@
 
 namespace ffmpeg_image_transport
 {
-
 void FFMPEGSubscriber::subscribeImpl(ros::NodeHandle& nh, const std::string& base_topic, uint32_t queue_size,
                                      const Callback& callback, const ros::VoidPtr& tracked_object,
                                      const image_transport::TransportHints& transport_hints)

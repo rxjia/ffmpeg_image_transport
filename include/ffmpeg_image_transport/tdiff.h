@@ -7,7 +7,6 @@
 
 namespace ffmpeg_image_transport
 {
-
 class TDiff
 {
 public:

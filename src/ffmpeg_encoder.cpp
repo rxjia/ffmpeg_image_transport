@@ -180,11 +180,7 @@ bool FFMPEGEncoder::openCodec(int width, int height)
     ROS_DEBUG(
         "codec: %10s, profile: %10s, preset: %10s,"
         " bit_rate: %10ldK qmax: %2d",
-        codecName_.c_str(),
-        profile_.c_str(),
-        preset_.c_str(),
-        bitRate_,
-        qmax_);
+        codecName_.c_str(), profile_.c_str(), preset_.c_str(), bitRate_, qmax_);
     /* other optimization options for nvenc
        if (av_opt_set_int(codecContext_->priv_data, "surfaces",
        0, AV_OPT_SEARCH_CHILDREN) != 0) {

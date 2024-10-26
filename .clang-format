@@ -1,14 +1,5 @@
 ---
 BasedOnStyle: Google
-BinPackArguments: false
-AlignOperands: Align
-AlignConsecutiveAssignments: Consecutive
-#AlignConsecutiveMacros:
-#  Enabled: true
-#  AcrossEmptyLines: true
-#  AcrossComments: false
-#AlignConsecutiveDeclarations: Consecutive
-
 AccessModifierOffset: -2
 ConstructorInitializerIndentWidth: 2
 AlignEscapedNewlinesLeft: false
@@ -59,16 +50,17 @@ SpaceAfterCStyleCast: false
 BreakBeforeBraces: Custom
 
 # Control of individual brace wrapping cases
-BraceWrapping: {
+BraceWrapping:
   AfterClass: 'true'
-    AfterControlStatement: 'true'
-    AfterEnum : 'true'
-    AfterFunction : 'true'
-    AfterNamespace : 'true'
-    AfterStruct : 'true'
-    AfterUnion : 'true'
-    BeforeCatch : 'true'
-    BeforeElse : 'true'
-    IndentBraces : 'false'
-}
-...
+  AfterControlStatement: 'true'
+  AfterEnum : 'true'
+  AfterFunction : 'true'
+  AfterNamespace : 'true'
+  AfterStruct : 'true'
+  AfterUnion : 'true'
+  BeforeCatch : 'true'
+  BeforeElse : 'true'
+  IndentBraces : 'false'
+
+# align equations
+AlignConsecutiveAssignments: true
