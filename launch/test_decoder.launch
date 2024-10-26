@@ -1,6 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <launch>
+    <arg name="in" default="/image_repub" />
+    <arg name="out" default="/image_decode" />
+
+    <node pkg="image_transport" name="image_decoder" type="republish"
+        args="ffmpeg in:=$(arg in) out:=$(arg out)" output="screen">
+    </node>
+
     <node pkg="image_view" name="image_view" type="image_view">
-        <remap from="image" to="/image_republisher/repub" />
-        <param name="image_transport" value="ffmpeg" />
+        <remap from="image" to="$(arg out)" />
     </node>
 </launch>

@@ -1,6 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <launch>
-   <arg name="in" default="/camera/color/image_raw" />
-   <arg name="out" default="~/repub" />
-    <node pkg="image_transport" name="image_republisher" type="republish" args="raw in:=$(arg in) out:=$(arg out)" output="screen">
+    <arg name="in" default="/image" />
+    <arg name="out" default="/image_repub" />
+    <node pkg="ffmpeg_image_transport" name="t_img_pub" type="t_img_pub.py" output="screen">
+    </node>
+    <node pkg="image_transport" name="image_republisher" type="republish"
+        args="raw in:=$(arg in) out:=$(arg out)" output="screen">
     </node>
 </launch>
